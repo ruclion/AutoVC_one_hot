@@ -36,14 +36,16 @@ if __name__ == '__main__':
     parser.add_argument('--dim_emb', type=int, default=256)
     parser.add_argument('--dim_pre', type=int, default=512)
     parser.add_argument('--freq', type=int, default=32)
+    # look up table用, 102个人, 用128作为上限
+    parser.add_argument('--speaker_num', type=int, default=128)
     
     # Training configuration.
-    parser.add_argument('--data_dir', type=str, default='./full_106_spmel_nosli')
-    parser.add_argument('--data_train_meta_path', type=str, default='./full_106_spmel_nosli/train_meta_full_106_nosli.txt')
-    parser.add_argument('--data_val_meta_path', type=str, default='./full_106_spmel_nosli/val_meta_full_106_nosli.txt')
+    parser.add_argument('--data_dir', type=str, default='../AutoVC_hujk17/full_106_spmel_nosli')
+    parser.add_argument('--data_train_meta_path', type=str, default='../AutoVC_hujk17/full_106_spmel_nosli/train_meta_full_106_nosli.txt')
+    parser.add_argument('--data_val_meta_path', type=str, default='../AutoVC_hujk17/full_106_spmel_nosli/val_meta_full_106_nosli.txt')
     parser.add_argument('--batch_size', type=int, default=64, help='mini-batch size')
     parser.add_argument('--num_iters', type=int, default=1000000, help='number of total iterations')
-    parser.add_argument('--max_len', type=int, default=128, help='dataloader output sequence length')
+    parser.add_argument('--max_len', type=int, default=192, help='dataloader output sequence length')
     
     # Miscellaneous.
     parser.add_argument('--log_step', type=int, default=1000)

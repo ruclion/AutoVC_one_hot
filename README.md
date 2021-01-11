@@ -2,6 +2,8 @@ https://github.com/auspicious3000/autovc
 分支而来的, 不会用直接git clone那种, 所以将原作者的git信息清空了, 单独在Commits on Sep 13, 2020的上面重新修改
 谢谢作者~
 
+这个是one-hot speaker embedding 版本
+
 ## AUTOVC: Zero-Shot Voice Style Transfer with Only Autoencoder Loss
 
 ## Checkout our new project: Unsupervised Speech Decomposition for Rhythm, Pitch, and Timbre Conversion https://github.com/auspicious3000/SpeechSplit

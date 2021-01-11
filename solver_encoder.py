@@ -22,6 +22,7 @@ class Solver(object):
         self.dim_emb = config.dim_emb
         self.dim_pre = config.dim_pre
         self.freq = config.freq
+        self.speaker_num = config.speaker_num
 
         # Training configurations.
         self.batch_size = config.batch_size
@@ -42,7 +43,7 @@ class Solver(object):
             
     def build_model(self):
         
-        self.G = Generator(self.dim_neck, self.dim_emb, self.dim_pre, self.freq)
+        self.G = Generator(self.dim_neck, self.dim_emb, self.dim_pre, self.freq, self.speaker_num)
 
         if os.path.exists(self.logs_dir) is False:
             os.makedirs(self.logs_dir, exist_ok=True)
@@ -84,27 +85,17 @@ class Solver(object):
         print('batch has', len(data_loader), 'batches')
         while True:
         # data_iter = iter(data_loader)
-            for _, (x_real, emb_org) in enumerate(data_loader):
+            for _, (x_real, speaker_id) in enumerate(data_loader):
 
                 # =================================================================================== #
                 #                             1. Preprocess input data                                #
                 # =================================================================================== #
 
                 # Fetch data.
-                
-
-
-
-
-                # try:
-                #     x_real, emb_org = next(data_iter)
-                # except:
-                #     data_iter = iter(data_loader)
-                #     x_real, emb_org = next(data_iter)
-                
+                # print('after data loader:', x_real, speaker_id, speaker_id.size())
                 
                 x_real = x_real.to(self.device) 
-                emb_org = emb_org.to(self.device) 
+                speaker_id = speaker_id.to(self.device) 
                             
         
                 # =================================================================================== #
@@ -114,13 +105,13 @@ class Solver(object):
                 self.G.train()
                             
                 # Identity mapping loss
-                x_identic, x_identic_psnt, code_real = self.G(x_real, emb_org, emb_org)
-                # print(x_real.size(), x_identic.size())
+                x_identic, x_identic_psnt, code_real = self.G(x_real, speaker_id, speaker_id)
+                # print('out111:', x_real.size(), x_identic.size(), code_real.size())
                 g_loss_id = F.mse_loss(x_real, x_identic)   
                 g_loss_id_psnt = F.mse_loss(x_real, x_identic_psnt)   
                 
                 # Code semantic loss.
-                code_reconst = self.G(x_identic_psnt, emb_org, None)
+                code_reconst = self.G(x_identic_psnt, speaker_id, None)
                 g_loss_cd = F.l1_loss(code_real, code_reconst)
 
 
@@ -162,7 +153,7 @@ class Solver(object):
                     
 
                 if (i + 1) % self.ckpt_step == 0:
-                    torch.save({'model': self.G.state_dict(), 'optimizer': self.g_optimizer.state_dict()}, os.path.join(self.logs_dir, 'autovc_' + str(i + 1) + '.ckpt'))
+                    torch.save({'model': self.G.state_dict(), 'optimizer': self.g_optimizer.state_dict()}, os.path.join(self.logs_dir, 'autovc_one_hot' + str(i + 1) + '.ckpt'))
                 
 
                 if (i + 1) % self.val_step == 0:
@@ -178,18 +169,18 @@ class Solver(object):
                     val_loss['G/val_loss'] = 0
                     cnt = 0
 
-                    for val_x_real, val_emb_org in val_data_loader:
+                    for val_x_real, val_speaker_id in val_data_loader:
                         val_x_real = val_x_real.to(self.device) 
-                        val_emb_org = val_emb_org.to(self.device) 
+                        val_speaker_id = val_speaker_id.to(self.device) 
                         self.G.eval()
                         with torch.no_grad():
                             # Identity mapping val loss
-                            val_x_identic, val_x_identic_psnt, val_code_real = self.G(val_x_real, val_emb_org, val_emb_org)
+                            val_x_identic, val_x_identic_psnt, val_code_real = self.G(val_x_real, val_speaker_id, val_speaker_id)
                             g_val_loss_id = F.mse_loss(val_x_real, val_x_identic)   
                             g_val_loss_id_psnt = F.mse_loss(val_x_real, val_x_identic_psnt)   
                             
                             # Code semantic val loss
-                            val_code_reconst = self.G(val_x_identic_psnt, val_emb_org, None)
+                            val_code_reconst = self.G(val_x_identic_psnt, val_speaker_id, None)
                             g_val_loss_cd = F.l1_loss(val_code_real, val_code_reconst)
 
                             # val loss

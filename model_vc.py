@@ -52,7 +52,7 @@ class Encoder(nn.Module):
                 ConvNorm(80+dim_emb if i==0 else 512,
                          512,
                          kernel_size=5, stride=1,
-                         padding=2,
+                         padding=2, # TODO 为甚么时padding22222????
                          dilation=1, w_init_gain='relu'),
                 nn.BatchNorm1d(512))
             convolutions.append(conv_layer)
@@ -61,23 +61,34 @@ class Encoder(nn.Module):
         self.lstm = nn.LSTM(512, dim_neck, 2, batch_first=True, bidirectional=True)
 
     def forward(self, x, c_org):
+        # print('important, input x:', x.size())
+        assert x.size(1) != 1
+        assert x.size(1) == 192
         x = x.squeeze(1).transpose(2,1)
+        # TODO!! replace
+        # x = x.transpose(2,1)
+        
         c_org = c_org.unsqueeze(-1).expand(-1, -1, x.size(-1))
         x = torch.cat((x, c_org), dim=1)
         
         for conv in self.convolutions:
             x = F.relu(conv(x))
         x = x.transpose(1, 2)
+
+        # print('after cnn:', x.size())
         
+        # TODO!! 用不用取消下面的flatten状态呢
         self.lstm.flatten_parameters()
         outputs, _ = self.lstm(x)
+        # print('after lstm:', x.size())
+
         out_forward = outputs[:, :, :self.dim_neck]
         out_backward = outputs[:, :, self.dim_neck:]
         
         codes = []
         for i in range(0, outputs.size(1), self.freq):
             codes.append(torch.cat((out_forward[:,i+self.freq-1,:],out_backward[:,i,:]), dim=-1))
-
+        # print('codes 0', codes[0].size())
         return codes
       
         
@@ -173,26 +184,37 @@ class Postnet(nn.Module):
 
 class Generator(nn.Module):
     """Generator network."""
-    def __init__(self, dim_neck, dim_emb, dim_pre, freq):
+    def __init__(self, dim_neck, dim_emb, dim_pre, freq, speaker_num):
         super(Generator, self).__init__()
         
+        self.speaker_lookup_table = nn.Embedding(speaker_num, dim_emb)
         self.encoder = Encoder(dim_neck, dim_emb, freq)
         self.decoder = Decoder(dim_neck, dim_emb, dim_pre)
         self.postnet = Postnet()
 
-    def forward(self, x, c_org, c_trg):
-                
-        codes = self.encoder(x, c_org)
-        if c_trg is None:
+    def forward(self, x, speaker_id_org, speaker_id_trg):
+        # speaker emb
+        speaker_emb_org = self.speaker_lookup_table(speaker_id_org)  # (bs,) -> (bs, 256)
+
+        # encoder
+        codes = self.encoder(x, speaker_emb_org)
+        # print('bottleneck codes', len(codes))
+        if speaker_id_trg is None:
             return torch.cat(codes, dim=-1)
+        
+
+        # rarget speaker emb
+        speaker_emb_trg = self.speaker_lookup_table(speaker_id_trg)  # (bs,) -> (bs, 256)
         
         tmp = []
         for code in codes:
             tmp.append(code.unsqueeze(1).expand(-1,int(x.size(1)/len(codes)),-1))
-        code_exp = torch.cat(tmp, dim=1)
-        
-        encoder_outputs = torch.cat((code_exp, c_trg.unsqueeze(1).expand(-1,x.size(1),-1)), dim=-1)
-        
+        code_exp = torch.cat(tmp, dim=1) # (bs, 192, 1024)
+        # print('expend x:', code_exp.size())
+
+        encoder_outputs = torch.cat((code_exp, speaker_emb_trg.unsqueeze(1).expand(-1,x.size(1),-1)), dim=-1)
+        # print('encoder_outputs:', encoder_outputs.size())
+
         mel_outputs = self.decoder(encoder_outputs)
                 
         mel_outputs_postnet = self.postnet(mel_outputs.transpose(2,1))

@@ -6,8 +6,7 @@ from torch.utils import data
 
  
 
-speaker_emb_dict = pkl.load(open('/ceph/home/hujk17/AutoVC_hujk17/full_106_spmel_nosli/speaker_embs_dict_full_106_nosli.pkl', 'rb'))
-
+speaker_id_dict_path = '/ceph/home/hujk17/AutoVC_hujk17/full_106_spmel_nosli/speaker_seen_unseen.txt'
 
 
 def text2list(file):
@@ -16,11 +15,20 @@ def text2list(file):
     return file_list
 
 
-def get_single_data_pair(fpath, speaker_name):
+def text2dict(file):
+    speaker_id_dict = {}
+    f = open(file, 'r').readlines()
+    for i, name in enumerate(f):
+        name = name.strip().split('|')[0]
+        speaker_id_dict[name] = i
+    # print(speaker_id_dict)
+    return speaker_id_dict
+
+
+def get_mel_data(fpath):
     # print('mel-path:', fpath)
     mel = np.load(fpath)
-    speaker_emb = speaker_emb_dict[speaker_name]
-    return mel, speaker_emb
+    return mel
 
 
 
@@ -32,11 +40,13 @@ class Utterances(data.Dataset):
         self.root_dir = root_dir
         self.max_len = max_len
         self.file_list = text2list(file=meta_path)
+        self.speaker_id_dict = text2dict(speaker_id_dict_path)
         
         
     def __getitem__(self, index):
         now = self.file_list[index].split('|')
-        mel, speaker_emb = get_single_data_pair(os.path.join(self.root_dir, now[0]), now[1])
+        speaker_id = self.speaker_id_dict[now[1]]
+        mel = get_mel_data(os.path.join(self.root_dir, now[0]))
 
 
         if mel.shape[0] < self.max_len:
@@ -49,7 +59,7 @@ class Utterances(data.Dataset):
         else:
             mel_fix = mel
         
-        return mel_fix, speaker_emb
+        return mel_fix, speaker_id
     
 
     def __len__(self):

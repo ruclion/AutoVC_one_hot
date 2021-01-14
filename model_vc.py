@@ -63,7 +63,8 @@ class Encoder(nn.Module):
     def forward(self, x, c_org):
         # print('important, input x:', x.size())
         assert x.size(1) != 1
-        assert x.size(1) == 192
+        print('train seq is 192, conversion mel seq lenth:', x.size(1))
+        # assert x.size(1) == 192
         x = x.squeeze(1).transpose(2,1)
         # TODO!! replace
         # x = x.transpose(2,1)
@@ -195,7 +196,7 @@ class Generator(nn.Module):
     def forward(self, x, speaker_id_org, speaker_id_trg):
         # speaker emb
         speaker_emb_org = self.speaker_lookup_table(speaker_id_org)  # (bs,) -> (bs, 256)
-
+        print('speaker model in---------', speaker_id_org.size())
         # encoder
         codes = self.encoder(x, speaker_emb_org)
         # print('bottleneck codes', len(codes))

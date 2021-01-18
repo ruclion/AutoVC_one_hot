@@ -7,3 +7,5 @@ full_106_spmel_nosli/
 logs_dir/
 logs_tensorboard/
 *.wav
+tmp_spec_dir/
+autovc_one_hot*
